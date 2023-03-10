@@ -1,0 +1,22 @@
+Autoswitch WiFi to RPi access point
+    https://www.raspberryconnect.com/projects/65-raspberrypi-hotspot-accesspoints/183-raspberry-pi-automatic-hotspot-and-static-hotspot-installer
+    Options 2+7
+
+FTP server
+	sudo apt-get install proftpd 			
+	service proftpd status			
+        Должна быть надпись зеленым: active (running)
+
+Python librari 
+    st7789
+        Turn on SPI in raspi-config
+        https://github.com/pimoroni/st7789-python
+        Display init in program
+            disp = ST7789.ST7789(port=0, cs=0, rst=23, dc=24, backlight=25, rotation=180, spi_speed_hz=80 * 1000 * 1000)
+            disp._spi.mode=3  
+            disp.reset()  
+            disp._init() 
+    PIL
+		python3 -m pip install --upgrade Pillow
+		sudo apt-get install libopenjp2-7
+		sudo apt-get install libtiff5
