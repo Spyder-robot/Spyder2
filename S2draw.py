@@ -20,19 +20,19 @@ class ST:
 
     wificol = 0
 
-    mntpl = [[0, [0, 176, 40, 220], [20, 198], "Sc"],
-             [0, [0, 132, 40, 176], [20, 154], "Pk"],
-             [0, [0, 88, 40, 132], [20, 110], "Rd"],
-             [1, [0, 44, 40, 88], [20, 66], "Al"],
-             [0, [0, 0, 40, 44], [20, 22], "Mn"],
-             [0, [40, 0, 93, 44], [67, 22], "SET"],
-             [0, [93, 0, 147, 44], [120, 22], "SYS"],
-             [0, [147, 0, 200, 44], [173, 22], "TST"],
-             [1, [200, 0, 239, 44], [220, 22], "Ld"],
-             [0, [200, 44, 239, 88], [220, 66], "Rg"],
-             [0, [200, 88, 239, 132], [220, 110], "Fn"],
-             [1, [200, 132, 239, 176], [220, 154], "Tf"],
-             [1, [200, 176, 239, 220], [220, 198], "Vi"]]
+    mntpl = [[[0, 176, 40, 220], [20, 198], "Sc"],
+             [[0, 132, 40, 176], [20, 154], "Pk"],
+             [[0, 88, 40, 132], [20, 110], "Rd"],
+             [[0, 44, 40, 88], [20, 66], "Al"],
+             [[0, 0, 40, 44], [20, 22], "Mn"],
+             [[40, 0, 93, 44], [67, 22], "SET"],
+             [[93, 0, 147, 44], [120, 22], "SYS"],
+             [[147, 0, 200, 44], [173, 22], "TST"],
+             [[200, 0, 239, 44], [220, 22], "Ld"],
+             [[200, 44, 239, 88], [220, 66], "Rg"],
+             [[200, 88, 239, 132], [220, 110], "Fn"],
+             [[200, 132, 239, 176], [220, 154], "Tf"],
+             [[200, 176, 239, 220], [220, 198], "Vi"]]
 
     def __init__(self, fstr):
         self.fontstr = fstr
@@ -75,20 +75,20 @@ class ST:
         self.drawSBline(drw, 159)
         self.drawSBline(drw, 196)
 
-    def drawMN(self, drw, actmn):
+    def drawMN(self, drw, actmn, hlg):
         drw.font = ImageFont.truetype(self.fontstr, 20)
 
         for i in range(13):
-            if self.mntpl[i][0] == 0:
-                drw.rectangle(self.mntpl[i][1])
-                drw.text(self.mntpl[i][2], self.mntpl[i][3], anchor="mm")
+            if hlg & (1 << i) == 0:
+                drw.rectangle(self.mntpl[i][0])
+                drw.text(self.mntpl[i][1], self.mntpl[i][2], anchor="mm")
             else:
-                drw.rectangle(self.mntpl[i][1], 0xffffff)
-                drw.text(self.mntpl[i][2], self.mntpl[i][3], 0, anchor="mm")
+                drw.rectangle(self.mntpl[i][0], 0xffffff)
+                drw.text(self.mntpl[i][1], self.mntpl[i][2], 0, anchor="mm")
 
-        drw.rectangle(self.mntpl[actmn][1], outline=(255, 255, 0), width=5)
+        drw.rectangle(self.mntpl[actmn][0], outline=(255, 255, 0), width=5)
 
-        if self.mntpl[11][0]:
+        if hlg & (1 << 11):
             drw.text((125, 60), "{:04.2f}m".format(self.tof), anchor="mm")
 
     def bitCH(self, kbd, bt):
@@ -133,11 +133,11 @@ class ST:
         drw.regular_polygon((80, 190, 10), 3, 180, col)
         drw.polygon((70, 165, 90, 165, 80, 200), col)
 
-    def drawCP(self, actmn, kbd):
+    def drawCP(self, actmn, kbd, hlg):
         image = Image.new("RGB", (240, 240), (0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        self.drawMN(draw, actmn)
+        self.drawMN(draw, actmn, hlg)
         self.drawSB(draw)
         self.drawSP(draw, kbd)
 
