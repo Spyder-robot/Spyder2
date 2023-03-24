@@ -20,3 +20,7 @@ Python librari
 		python3 -m pip install --upgrade Pillow
 		sudo apt-get install libopenjp2-7
 		sudo apt-get install libtiff5
+
+    Serial
+        Turn on Serial in raspi-config
+        pip3 install pyserial

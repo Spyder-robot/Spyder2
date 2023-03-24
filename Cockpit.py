@@ -1,52 +1,132 @@
 '''
 Backlog
-- wifi library (QTimer)
-- Arduino датчики
-- Передача датчиков по WiFi
 '''
 
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from S2draw import ST
 from PIL.ImageQt import ImageQt
 
 from threading import Thread
 import socket
+import time
 
-HOST = '10.0.1.20'
+HOST = '192.168.0.102'
 
 
-class ThreadWiFi(Thread):
+class WiFiClient(Thread):
 
     def __init__(self):
-        Thread.__init__(self, target=self.wifi)
+        Thread.__init__(self, target=self.mainCycle)
         self.daemon = True
+
+        self.U = 0
+        self.A = 0
+        self.W = 0
+        self.T = 0
+        self.updt = True
+        self.act = False
+
+        print("WiFi client started")
         self.start()
 
-    def wifi(self):
-        cntd = False
-        while True:
-            while not cntd:
-                self.sct = socket.socket()
-                cntd = True
-                try:
-                    self.sct.connect((HOST, 11111))
-                except TimeoutError as e:
-                    print(e)
-                    cntd = False
-            print(self.sct.getpeername())
-            while True:
-                data = self.sct.recv(1024)
-                if data is not None:
-                    print(data.decode())
+    def parse(self, data):
+        parsStage = 0
+        varNo = 0
+        msg = ""
+        for c in data.decode():
+            if parsStage == 3:
+                if c == ">":
+                    parsStage = 0
+                    if varNo == 1:
+                        self.U = float(msg)
+                    elif varNo == 2:
+                        self.A = float(msg)
+                    elif varNo == 3:
+                        self.W = float(msg)
+                    elif varNo == 4:
+                        self.T = float(msg)
+                    self.updt = True
+                else:
+                    msg = msg + c
+            if parsStage == 2:
+                if c == "=":
+                    parsStage = 3
+                    msg = ""
+                else:
+                    parsStage = 0
+            if parsStage == 1:
+                if c == "V":
+                    varNo = 1
+                    parsStage = 2
+                elif c == "I":
+                    varNo = 2
+                    parsStage = 2
+                elif c == "W":
+                    varNo = 3
+                    parsStage = 2
+                elif c == "T":
+                    varNo = 4
+                    parsStage = 2
+                else:
+                    parsStage = 0
+            if parsStage == 0 and c == "<":
+                parsStage = 1
 
-    def iswifi(self):
+    def send(self, msg):
         try:
-            self.sct.getpeername()
-        except socket.error:
-            return False
-        return True
+            self.clientSock.send(msg.encode())
+        except socket.error as e:
+            print(e)
+            print("WiFi connection lost")
+            self.connect()
+
+    def ping(self):
+        self.send("PING")
+
+    def read(self):
+        self.updt = False
+        return (self.U, self.A, self.W, int(self.T), self.act)
+
+    def isActive(self):
+        return self.act
+
+    def isUpdated(self):
+        return self.updt
+
+    def connect(self):
+        self.act = False
+        print("WiFi trying to connect...")
+        cntd = False
+        while not cntd:
+            cntd = True
+            try:
+                self.clientSock = socket.socket()
+                self.clientSock.connect((HOST, 11111))
+            except Exception as e:
+                print(e)
+                cntd = False
+                time.sleep(3)
+                self.clientSock.close()
+        print("WiFi connected to server")
+        self.act = True
+        print(self.clientSock.getsockname())
+        print(self.clientSock.getpeername())
+
+    def mainCycle(self):
+        while True:
+            self.connect()
+            while True:
+                try:
+                    data = self.clientSock.recv(1024)
+                except socket.error as e:
+                    print(e)
+                    print("WiFi connection lost")
+                    break
+                if (data is not None) and (data.decode() != ""):
+                    print("WiFi recieved "+data.decode())
+                    self.parse(data)
 
 
 class MainWindow(QMainWindow):
@@ -67,16 +147,23 @@ class MainWindow(QMainWindow):
         self.mnit = 6
         self.navi = 0
         self.hlgt = 0
-        self.img = self.dsp.drawCP(self.mnit, self.navi, self.hlgt)
+        self.img = self.dsp.drawCP((self.mnit, self.navi, self.hlgt), wf.read())
         self.keyfl = True
 
-    def paintEvent(self, event):
-        self.img = self.dsp.drawCP(self.mnit, self.navi, self.hlgt)
-        self.display.setPixmap(QPixmap.fromImage(ImageQt(self.img)))
-        if wf.iswifi():
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.ping)
+        self.timer.start(1000)
+
+    def ping(self):
+        if wf.isActive():
+            wf.ping()
             self.dsp.wifi = 1
         else:
             self.dsp.wifi = 0
+
+    def paintEvent(self, event):
+        self.img = self.dsp.drawCP((self.mnit, self.navi, self.hlgt), wf.read())
+        self.display.setPixmap(QPixmap.fromImage(ImageQt(self.img)))
 
     def keyPressEvent(self, event):
         if self.keyfl:
@@ -133,15 +220,15 @@ class MainWindow(QMainWindow):
         self.sendCntrl()
 
     def sendCntrl(self):
-        if wf.iswifi():
+        if wf.isActive():
             msg = "<M="+str(self.mnit)+">"
             msg += "<N="+str(self.navi)+">"
             msg += "<H="+str(self.hlgt)+">"
-            wf.sct.send(msg.encode())
+            wf.send(msg)
 
 
 if __name__ == '__main__':
-    wf = ThreadWiFi()
+    wf = WiFiClient()
     app = QApplication([])
     window = MainWindow()
     window.setStyleSheet('background-color: grey;')

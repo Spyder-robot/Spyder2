@@ -3,6 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 import time
 from threading import Thread
 import socket
+import serial
 
 
 def s2st():
@@ -25,65 +26,138 @@ def s2bl(disp):
     disp.display(img)
 
 
-class ThreadWiFi(Thread):
+class WiFiServer(Thread):
 
     def __init__(self):
-        Thread.__init__(self, target=self.wifi)
+        Thread.__init__(self, target=self.mainCycle)
         self.daemon = True
-        self.wificonn = None
+
+        self.M = 6  # Menu item
+        self.N = 0  # Navigation flags
+        self.H = 0  # Highlighted flags
+        self.updt = True    # Defaults
+        self.act = False
+
+        self.clientSock = None
+        self.mainSock = socket.socket()
+        self.mainSock.bind(('', 11111))
+        self.mainSock.listen()
+        print("WiFi server started")
         self.start()
-        self.mnit = 6
-        self.navi = 0
-        self.hlgt = 0
-        self.updt = True
 
-    def wifi(self):
-        s = socket.socket()
-        s.bind(('', 11111))
-
-        while True:
-            s.listen()
-            self.wificonn, addr = s.accept()
-            print(addr)
-            while self.wificonn:
-                data = self.wificonn.recv(1024)
-                if data is not None:
-                    if data.decode() == "":
-                        break
-                    print(data)
+    def parse(self, data):
+        parsStage = 0
+        varNo = 0
+        msg = ""
+        for c in data.decode():
+            if parsStage == 3:
+                if c == ">":
                     parsStage = 0
-                    varNo = 0
+                    if varNo == 1:
+                        self.M = int(msg)
+                    elif varNo == 2:
+                        self.N = int(msg)
+                    elif varNo == 3:
+                        self.H = int(msg)
+                    self.updt = True
+                else:
+                    msg = msg + c
+            if parsStage == 2:
+                if c == "=":
+                    parsStage = 3
                     msg = ""
-                    for c in data.decode():
-                        if parsStage == 3:
-                            if c == ">":
-                                parsStage = 0
-                                self.updt = True
-                                if varNo == 1:
-                                    self.mnit = int(msg)
-                                elif varNo == 2:
-                                    self.navi = int(msg)
-                                elif varNo == 3:
-                                    self.hlgt = int(msg)
-                            else:
-                                msg = msg + c
-                        if parsStage == 2:
-                            if c == "=":
-                                parsStage = 3
-                                msg = ""
-                            else:
-                                parsStage = 0
-                        if parsStage == 1:
-                            if c == "M":
-                                varNo = 1
-                                parsStage = 2
-                            elif c == "N":
-                                varNo = 2
-                                parsStage = 2
-                            elif c == "H":
-                                varNo = 3
-                                parsStage = 2
-                            else:
-                                parsStage = 0
-                        if parsStage == 0 and c == "<":
-                            parsStage = 1
+                else:
+                    parsStage = 0
+            if parsStage == 1:
+                if c == "M":
+                    varNo = 1
+                    parsStage = 2
+                elif c == "N":
+                    varNo = 2
+                    parsStage = 2
+                elif c == "H":
+                    varNo = 3
+                    parsStage = 2
+                else:
+                    parsStage = 0
+            if parsStage == 0 and c == "<":
+                parsStage = 1
+
+    def send(self, msg):
+        try:
+            self.clientSock.send(msg.encode())
+        except socket.error as e:
+            print(e)
+            print("WiFi connection lost")
+            self.connect()
+
+    def ping(self):
+        self.send("PING")
+
+    def read(self):
+        self.updt = False
+        return (self.M, self.N, self.H)
+
+    def isActive(self):
+        return self.act
+
+    def isUpdated(self):
+        return self.updt
+
+    def close(self):
+        self.clientSock.close()
+        self.mainSock.close()
+
+    def connect(self):
+        self.act = False
+        print("WiFi waiting for connection...")
+        self.clientSock, addr = self.mainSock.accept()
+        print("WiFi client connected")
+        self.act = True
+        print(addr)
+
+    def mainCycle(self):
+        while True:
+            self.connect()
+            while True:
+                try:
+                    data = self.clientSock.recv(1024)
+                except socket.error as e:
+                    print(e)
+                    print("WiFi connection lost")
+                    break
+                if (data is not None) and (data.decode() != ""):
+                    print("WiFi recieved "+data.decode())
+                    self.parse(data)
+
+
+class ThreadSerial(Thread):
+
+    def __init__(self, port, baud):
+        self.ser = serial.Serial(port, baud)
+        Thread.__init__(self, target=self.serread, args=(self.ser,))
+        self.daemon = True
+        self.U = 0
+        self.A = 0
+        self.T1 = 0
+        self.T2 = 0
+        self.start()
+
+    def read(self):
+        return (self.U, self.A, 0, max(self.T1, self.T2))
+
+    def serread(self, serl):
+        while True:
+            time.sleep(0.1)
+            while serl.in_waiting > 0:
+                resp = serl.readline()
+                va = resp.decode("utf-8", errors="ignore")[:-2]
+                if va[:3] == "<V=":
+                    self.U = float(va[3:va.find(">")])
+                elif va[:3] == "<I=":
+                    self.A = float(va[3:va.find(">")])
+                elif va[:4] == "<T1=":
+                    self.T1 = int(float(va[4:va.find(">")]))
+                elif va[:4] == "<T2=":
+                    self.T2 = int(float(va[4:va.find(">")]))
+

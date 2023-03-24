@@ -3,22 +3,13 @@ from PIL import ImageDraw, Image, ImageFont
 
 class ST:
 
-    v = 0
-    a = 0
-    w = 0
-    c = 0
-    wifi = 0
-    tof = 0
-
     vth1 = 11
     vth2 = 10
-    vcol = 0
+
 
     cth1 = 40
     cth2 = 60
-    ccol = 0
 
-    wificol = 0
 
     mntpl = [[[0, 176, 40, 220], [20, 198], "Sc"],
              [[0, 132, 40, 176], [20, 154], "Pk"],
@@ -44,31 +35,38 @@ class ST:
         fontmenu = ImageFont.truetype(self.fontstr, 15)
         drw.text((x, 230), txt, font=fontmenu, fill=col, anchor="mm")
 
-    def drawSB(self, drw):
+    def drawSB(self, drw, tpl):
+        
+        vcol = 0
+        ccol = 0
+
+        wificol = 0
+        v, a, w, c, wifi = tpl
+
         drw.rectangle((0, 220, 239, 239), outline=(255, 255, 255))
 
-        self.vcol = 0x00ff00
-        if self.v < self.vth1:
-            self.vcol = 0x00ffff
-        if self.v < self.vth2:
-            self.vcol = 0x0000ff
+        vcol = 0x00ff00
+        if v < self.vth1:
+            vcol = 0x00ffff
+        if v < self.vth2:
+            vcol = 0x0000ff
 
-        self.ccol = 0x00ff00
-        if self.c > self.cth1:
-            self.ccol = 0x00ffff
-        if self.c > self.cth2:
-            self.ccol = 0x0000ff
+        ccol = 0x00ff00
+        if c > self.cth1:
+            ccol = 0x00ffff
+        if c > self.cth2:
+            ccol = 0x0000ff
 
-        if self.wifi == 0:
-            self.wificol = 0x0000ff
+        if wifi:
+            wificol = 0x00ff00
         else:
-            self.wificol = 0x00ff00
+            wificol = 0x0000ff
 
-        self.drawSBtext(drw, 28, "{:04.1f}V".format(self.v), self.vcol)
-        self.drawSBtext(drw, 77, "{:03.1f}A".format(self.a))
-        self.drawSBtext(drw, 129, "{:04.1f}W".format(self.w))
-        self.drawSBtext(drw, 178, "{:02d}C".format(self.c), self.ccol)
-        self.drawSBtext(drw, 218, "WiFi", self.wificol)
+        self.drawSBtext(drw, 28, "{:04.1f}V".format(v), vcol)
+        self.drawSBtext(drw, 77, "{:03.1f}A".format(a))
+        self.drawSBtext(drw, 129, "{:04.1f}W".format(w))
+        self.drawSBtext(drw, 178, "{:02d}C".format(c), ccol)
+        self.drawSBtext(drw, 218, "WiFi", wificol)
 
         self.drawSBline(drw, 55)
         self.drawSBline(drw, 99)
@@ -133,12 +131,12 @@ class ST:
         drw.regular_polygon((80, 190, 10), 3, 180, col)
         drw.polygon((70, 165, 90, 165, 80, 200), col)
 
-    def drawCP(self, actmn, kbd, hlg):
+    def drawCP(self, tpl, sbtpl):
         image = Image.new("RGB", (240, 240), (0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        self.drawMN(draw, actmn, hlg)
-        self.drawSB(draw)
-        self.drawSP(draw, kbd)
+        self.drawMN(draw, tpl[0], tpl[2])
+        self.drawSB(draw, sbtpl)
+        self.drawSP(draw, tpl[1])
 
         return image
