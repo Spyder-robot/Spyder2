@@ -1,5 +1,17 @@
 '''
 Backlog
+- RGB
+- FAN
+- ToF
+- Video stream
+- Pose Park
+- Command Park from Stand
+- Command Stand from Park/Radar/Move and Go
+- Command Radar from Stand and Scan
+- Command Move from Stand
+- Free gait
+- Free move (without walking)
+- Radar scan and draw
 '''
 
 from PyQt6.QtGui import QPixmap
@@ -12,7 +24,7 @@ from threading import Thread
 import socket
 import time
 
-HOST = '192.168.0.102'
+HOST = '10.0.1.9'
 
 
 class WiFiClient(Thread):
@@ -130,6 +142,7 @@ class WiFiClient(Thread):
 
 
 class MainWindow(QMainWindow):
+
     def __init__(self):
         super().__init__()
         self.setGeometry(600, 200, 260, 280)

@@ -5,11 +5,8 @@ class ST:
 
     vth1 = 11
     vth2 = 10
-
-
     cth1 = 40
     cth2 = 60
-
 
     mntpl = [[[0, 176, 40, 220], [20, 198], "Sc"],
              [[0, 132, 40, 176], [20, 154], "Pk"],
@@ -36,10 +33,9 @@ class ST:
         drw.text((x, 230), txt, font=fontmenu, fill=col, anchor="mm")
 
     def drawSB(self, drw, tpl):
-        
+
         vcol = 0
         ccol = 0
-
         wificol = 0
         v, a, w, c, wifi = tpl
 

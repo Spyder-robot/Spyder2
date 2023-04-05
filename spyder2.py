@@ -4,6 +4,7 @@ import time
 from threading import Thread
 import socket
 import serial
+from smbus2 import SMBus
 
 
 def s2st():
@@ -141,10 +142,11 @@ class ThreadSerial(Thread):
         self.A = 0
         self.T1 = 0
         self.T2 = 0
+        self.W = 0
         self.start()
 
     def read(self):
-        return (self.U, self.A, 0, max(self.T1, self.T2))
+        return (self.U, self.A, self.W, max(self.T1, self.T2))
 
     def serread(self, serl):
         while True:
@@ -152,12 +154,40 @@ class ThreadSerial(Thread):
             while serl.in_waiting > 0:
                 resp = serl.readline()
                 va = resp.decode("utf-8", errors="ignore")[:-2]
+                # print(va)
                 if va[:3] == "<V=":
                     self.U = float(va[3:va.find(">")])
                 elif va[:3] == "<I=":
                     self.A = float(va[3:va.find(">")])
+                elif va[:3] == "<W=":
+                    self.W = float(va[3:va.find(">")])
                 elif va[:4] == "<T1=":
                     self.T1 = int(float(va[4:va.find(">")]))
                 elif va[:4] == "<T2=":
                     self.T2 = int(float(va[4:va.find(">")]))
+                else:
+                    print(va)
 
+
+class I2C:
+
+    def __init__(self):
+        self.bus = SMBus(1)
+
+    def read(self, adr, reg, bts):
+        try:
+            res = self.bus.read_i2c_block_data(adr, reg, bts)
+        except OSError:
+            res = [-1]
+        print("I2C: Adr-"+str(adr)+" Reg- "+str(reg)+" Result- "+str(res))
+        return res
+
+    def write(self, adr, reg, bts):
+        try:
+            res = self.bus.write_i2c_block_data(adr, reg, bts)
+        except OSError:
+            res = [-1]
+        print("I2C: Adr-"+str(adr)+" Reg- "+str(reg)+" Write- "+str(bts)+" Result - "+str(res))
+        if res is None:
+            res = [1]
+        return res

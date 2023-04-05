@@ -24,3 +24,36 @@ Python librari
     Serial
         Turn on Serial in raspi-config
         pip3 install pyserial
+
+AVRdude & SPI config
+	sudo apt-get install avrdude				
+	avrdude -v		
+	sudo nano /etc/avrdude.conf
+	alt-/ - переход в конец файла
+		programmer 			
+		  id = "Arduino_1"; 			
+		  desc = "Arduino 1";			
+		  type = "linuxgpio"; 			
+		  reset = 22; 			
+		  sck = 27; 			
+		  mosi = 4; 			
+		  miso = 17; 			
+		;			
+		programmer 			
+		  id = "Arduino_2"; 			
+		  desc = "Arduino 2";			
+ 		 type = "linuxgpio"; 			
+		  reset = 26; 			
+		  sck = 13; 			
+		  mosi = 5; 			
+		  miso = 6; 			
+		;			
+
+	sudo avrdude -p atmega328p -C /etc/avrdude.conf -c Arduino_1 -v
+    sudo avrdude -p atmega328p -C /etc/avrdude.conf -c Arduino_1 -v -U flash:w:arduino1.hex:i
+
+	I2C
+		sudo apt-get install -y i2c-tools
+		sudo i2cdetect -y 1
+		
+		pip3 install smbus2
