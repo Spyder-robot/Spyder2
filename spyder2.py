@@ -128,7 +128,7 @@ class WiFiServer(Thread):
                     print("WiFi connection lost")
                     break
                 if (data is not None) and (data.decode() != ""):
-                    print("WiFi recieved "+data.decode())
+                    # print("WiFi recieved "+data.decode())
                     self.parse(data)
 
 
@@ -179,15 +179,17 @@ class I2C:
             res = self.bus.read_i2c_block_data(adr, reg, bts)
         except OSError:
             res = [-1]
-        print("I2C: Adr-"+str(adr)+" Reg- "+str(reg)+" Result- "+str(res))
+        # print("I2C: Adr-"+str(adr)+" Reg- "+str(reg)+" Read - "+str(res))
         return res
 
-    def write(self, adr, reg, bts):
+    def write(self, adr, bts):
         try:
-            res = self.bus.write_i2c_block_data(adr, reg, bts)
+            res = self.bus.write_byte(adr, bts)
         except OSError:
             res = [-1]
-        print("I2C: Adr-"+str(adr)+" Reg- "+str(reg)+" Write- "+str(bts)+" Result - "+str(res))
         if res is None:
             res = [1]
+
+        # print("I2C: Adr-"+str(adr)+" Write - "+str(bts)+" Result - "+str(res))
+
         return res

@@ -10,14 +10,18 @@ if __name__ == '__main__':
     wf = WiFiServer()
     ser = ThreadSerial("/dev/serial0", 115200)
     i2c = I2C()
-    timer1000 = time.time()
+    timerSens = time.time()
+    flagRGB = False
     flagLED = False
     flagFAN = False
+    flagTOF = False
+    tof = 0
+    timerTof = time.time()
 
     try:
         while True:
             if wf.isUpdated():
-                img = drw.drawCP(wf.read(), ser.read()+(wf.isActive(),))
+                img = drw.drawCP(wf.read(), ser.read()+(wf.isActive(), tof))
                 disp.display(img)
                 # print("M = %d, N = %d, H = %d" % wf.read())
                 hl = wf.read()[2]
@@ -36,12 +40,34 @@ if __name__ == '__main__':
                     i2c.read(0x11, 13, 1)
                     flagFAN = False
 
-            if time.time() - timer1000 > 3:
+                if not flagRGB and hl >> 9 & 1 == 1:
+                    i2c.read(0x11, 14, 1)
+                    flagRGB = True
+                if flagRGB and hl >> 9 & 1 == 0:
+                    i2c.read(0x11, 15, 1)
+                    flagRGB = False
+
+                if not flagTOF and hl >> 11 & 1 == 1:
+                    flagTOF = True
+                if flagTOF and hl >> 11 & 1 == 0:
+                    flagTOF = False
+
+            if time.time() - timerTof > 1 and flagTOF:
+                tof = tof + 1
+                i2c.write(0x70, 0x51)
+                time.sleep(.01)
+                rang = i2c.read(0x70, 0x00, 2)
+                tof = rang[0]*256 + rang[1]
+                if wf.isActive():
+                    wf.send("<F=%f>" % tof)
+                timerTof = time.time()
+
+            if time.time() - timerSens > 3:
                 if wf.isActive():
                     wf.send("<V=%f> <I=%f> <W=%f> <T=%f>" % ser.read())
-                img = drw.drawCP(wf.read(), ser.read()+(wf.isActive(),))
+                img = drw.drawCP(wf.read(), ser.read()+(wf.isActive(), tof))
                 disp.display(img)
-                timer1000 = time.time()
+                timerSens = time.time()
 
     except KeyboardInterrupt:
         s2bl(disp)

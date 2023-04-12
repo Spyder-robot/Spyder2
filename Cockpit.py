@@ -1,8 +1,5 @@
 '''
 Backlog
-- RGB
-- FAN
-- ToF
 - Video stream
 - Pose Park
 - Command Park from Stand
@@ -24,7 +21,7 @@ from threading import Thread
 import socket
 import time
 
-HOST = '10.0.1.9'
+HOST = '192.168.0.102'
 
 
 class WiFiClient(Thread):
@@ -37,6 +34,7 @@ class WiFiClient(Thread):
         self.A = 0
         self.W = 0
         self.T = 0
+        self.F = 0
         self.updt = True
         self.act = False
 
@@ -59,6 +57,8 @@ class WiFiClient(Thread):
                         self.W = float(msg)
                     elif varNo == 4:
                         self.T = float(msg)
+                    elif varNo == 5:
+                        self.F = int(float(msg))
                     self.updt = True
                 else:
                     msg = msg + c
@@ -81,6 +81,9 @@ class WiFiClient(Thread):
                 elif c == "T":
                     varNo = 4
                     parsStage = 2
+                elif c == "F":
+                    varNo = 5
+                    parsStage = 2
                 else:
                     parsStage = 0
             if parsStage == 0 and c == "<":
@@ -99,7 +102,7 @@ class WiFiClient(Thread):
 
     def read(self):
         self.updt = False
-        return (self.U, self.A, self.W, int(self.T), self.act)
+        return (self.U, self.A, self.W, int(self.T), self.act, self.F)
 
     def isActive(self):
         return self.act
@@ -137,7 +140,7 @@ class WiFiClient(Thread):
                     print("WiFi connection lost")
                     break
                 if (data is not None) and (data.decode() != ""):
-                    print("WiFi recieved "+data.decode())
+                    # print("WiFi recieved "+data.decode())
                     self.parse(data)
 
 

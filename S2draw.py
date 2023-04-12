@@ -69,7 +69,7 @@ class ST:
         self.drawSBline(drw, 159)
         self.drawSBline(drw, 196)
 
-    def drawMN(self, drw, actmn, hlg):
+    def drawMN(self, drw, actmn, hlg, tof):
         drw.font = ImageFont.truetype(self.fontstr, 20)
 
         for i in range(13):
@@ -83,7 +83,7 @@ class ST:
         drw.rectangle(self.mntpl[actmn][0], outline=(255, 255, 0), width=5)
 
         if hlg & (1 << 11):
-            drw.text((125, 60), "{:04.2f}m".format(self.tof), anchor="mm")
+            drw.text((125, 60), "{:03d}m".format(tof), anchor="mm")
 
     def bitCH(self, kbd, bt):
         if kbd & (1 << bt):
@@ -131,8 +131,8 @@ class ST:
         image = Image.new("RGB", (240, 240), (0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        self.drawMN(draw, tpl[0], tpl[2])
-        self.drawSB(draw, sbtpl)
+        self.drawMN(draw, tpl[0], tpl[2], sbtpl[5])
+        self.drawSB(draw, sbtpl[:5])
         self.drawSP(draw, tpl[1])
 
         return image

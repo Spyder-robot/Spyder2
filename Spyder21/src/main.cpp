@@ -1,5 +1,9 @@
 #include <Arduino.h>
 
+// LED
+#include <microLED.h>
+microLED<16, 5, MLED_NO_CLOCK, LED_WS2818, ORDER_GRB, CLI_AVER, SAVE_MILLIS> strip;
+
 // I2C
 #include <Wire.h>
 int adr=0;
@@ -107,6 +111,12 @@ void setup() {
   Wire.onRequest(sendData);
   Wire.onReceive(recvData);
 
+  // RGB
+  strip.setBrightness(60);
+  strip.clear();
+  strip.show();
+  delay(1);   
+
 }
 
 void loop() {
@@ -143,6 +153,18 @@ void loop() {
     adr=0;
   }
 
+  if (adr==14)
+  {
+    strip.fill(mGreen);
+    strip.show();   
+    adr=0;
+  }
+  if (adr==15)
+  {
+    strip.clear();
+    strip.show();
+    adr=0;
+  }
 
    
   if(bt>0)
