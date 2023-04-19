@@ -57,3 +57,11 @@ AVRdude & SPI config
 		sudo i2cdetect -y 1
 		
 		pip3 install smbus2
+
+
+	Camera
+		raspi-config
+		Install opencv (https://pimylifeup.com/raspberry-pi-opencv/) without opencv-contrib (if error, set PYTHONPATH)
+		pip insatll picamera
+		pip install imutils
+		pip install flask

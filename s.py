@@ -1,5 +1,5 @@
 from S2draw import ST
-from spyder2 import s2st, s2bl, WiFiServer, ThreadSerial, I2C
+from spyder2 import s2st, s2bl, WiFiServer, ThreadSerial, I2C, ThreadCamera
 import sys
 import time
 
@@ -9,8 +9,10 @@ if __name__ == '__main__':
     drw = ST("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf")
     wf = WiFiServer()
     ser = ThreadSerial("/dev/serial0", 115200)
+    ThreadCamera()
     i2c = I2C()
     timerSens = time.time()
+    flagVID = False
     flagRGB = False
     flagLED = False
     flagFAN = False
@@ -51,6 +53,13 @@ if __name__ == '__main__':
                     flagTOF = True
                 if flagTOF and hl >> 11 & 1 == 0:
                     flagTOF = False
+
+                if not flagVID and hl >> 12 & 1 == 1:
+                    flagVID = True
+                    print("Video ON")
+                if flagVID and hl >> 12 & 1 == 0:
+                    flagVID = False
+                    print("Video OFF")
 
             if time.time() - timerTof > 1 and flagTOF:
                 tof = tof + 1

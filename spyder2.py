@@ -6,6 +6,11 @@ import socket
 import serial
 from smbus2 import SMBus
 
+import cv2
+from imutils.video.pivideostream import PiVideoStream
+import imutils
+from flask import Flask, Response
+
 
 def s2st():
     disp = ST7789.ST7789(port=0, cs=0, rst=23, dc=24, backlight=25, rotation=0, spi_speed_hz=80 * 1000 * 1000)
@@ -193,3 +198,43 @@ class I2C:
         # print("I2C: Adr-"+str(adr)+" Write - "+str(bts)+" Result - "+str(res))
 
         return res
+
+
+class VideoCamera(object):
+    def __init__(self):
+        self.vs = PiVideoStream(resolution=(320, 240), framerate=24).start()
+        time.sleep(1)
+
+    def __del__(self):
+        self.vs.stop()
+
+    def get_frame(self):
+        frame = imutils.rotate(self.vs.read(), 180)
+        jpeg = cv2.imencode('.jpg', frame)[1]
+        return jpeg.tobytes()
+
+
+class ThreadCamera(Thread):
+
+    def __init__(self):
+        Thread.__init__(self, target=self.runcam)
+        self.daemon = True
+        self.start()
+
+    def runcam(self):
+        pi_camera = VideoCamera()
+
+        app = Flask(__name__)
+
+        def gen(camera):
+            while True:
+                frame = camera.get_frame()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+
+        @app.route('/')
+        def video_feed():
+            return Response(gen(pi_camera),
+                            mimetype='multipart/x-mixed-replace; boundary=frame')
+
+        app.run(host='0.0.0.0', debug=False)

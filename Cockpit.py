@@ -1,22 +1,23 @@
 '''
 Backlog
-- Video stream
 - Pose Park
 - Command Park from Stand
 - Command Stand from Park/Radar/Move and Go
 - Command Radar from Stand and Scan
 - Command Move from Stand
-- Free gait
+- Free gait (walking)
 - Free move (without walking)
 - Radar scan and draw
+- Data collecting W(V) - calculate % of remaining power
+- Flickering during video playback
 '''
 
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QImage
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, pyqtSlot
 from S2draw import ST
 from PIL.ImageQt import ImageQt
-
+import cv2
 from threading import Thread
 import socket
 import time
@@ -144,20 +145,39 @@ class WiFiClient(Thread):
                     self.parse(data)
 
 
+class VideoThread(QThread):
+    changePixmap = pyqtSignal(QImage)
+    killed = False
+
+    def run(self):
+        cap = cv2.VideoCapture('http://'+HOST+':5000')
+        while True:
+            if self.killed:
+                break
+            ret, frame = cap.read()
+            if ret:
+                rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                h, w, ch = rgbImage.shape
+                bytesPerLine = ch * w
+                convertToQtFormat = QImage(rgbImage.data, w, h, bytesPerLine, QImage.Format.Format_RGB888)
+                p = convertToQtFormat.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
+                self.changePixmap.emit(p)
+
+    def kill(self):
+        self.killed = True
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setGeometry(600, 200, 260, 280)
+        self.setGeometry(600, 200, 260, 260)
+
+        self.vid = QLabel(self)
+        self.vid.setGeometry(1, 1, 1, 1)
 
         self.display = QLabel(self)
         self.display.setGeometry(10, 10, 240, 240)
-
-        self.statbar = QLabel(self)
-        self.statbar.setGeometry(10, 260, 240, 10)
-        self.statbar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.statbar.setStyleSheet('color: white;')
-        self.statbar.setText('Status Bar')
 
         self.dsp = ST("DejaVuSans-Bold.ttf")
         self.mnit = 6
@@ -169,6 +189,20 @@ class MainWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.ping)
         self.timer.start(1000)
+
+    def VideoOn(self):
+        self.setGeometry(400, 10, 660, 750)
+        self.vid.setGeometry(10, 10, 640, 480)
+        self.display.setGeometry(210, 500, 240, 240)
+        self.th = VideoThread(self)
+        self.th.changePixmap.connect(self.setImage)
+        self.th.start()
+
+    def VideoOff(self):
+        self.th.kill()
+        self.setGeometry(600, 200, 260, 260)
+        self.vid.setGeometry(1, 1, 1, 1)
+        self.display.setGeometry(10, 10, 240, 240)
 
     def ping(self):
         if wf.isActive():
@@ -195,6 +229,11 @@ class MainWindow(QMainWindow):
                 self.keyfl = False
             if event.key() == Qt.Key.Key_B:
                 self.hlgt = self.hlgt ^ (1 << self.mnit)
+                if self.mnit == 12:
+                    if self.hlgt & (1 << 12) == 0:
+                        self.VideoOff()
+                    else:
+                        self.VideoOn()
         if event.key() == Qt.Key.Key_E:
             self.navi = self.navi | (1 << 6)
         if event.key() == Qt.Key.Key_D:
@@ -241,6 +280,10 @@ class MainWindow(QMainWindow):
             msg += "<N="+str(self.navi)+">"
             msg += "<H="+str(self.hlgt)+">"
             wf.send(msg)
+
+    @pyqtSlot(QImage)
+    def setImage(self, image):
+        self.vid.setPixmap(QPixmap.fromImage(image))
 
 
 if __name__ == '__main__':
