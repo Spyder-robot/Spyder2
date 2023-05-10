@@ -32,6 +32,14 @@ def s2bl(disp):
     disp.display(img)
 
 
+def ToF(i2c):
+    i2c.writeByte(0x70, 0x51)
+    time.sleep(.01)
+    rang = i2c.read(0x70, 0x00, 2)
+    tf = rang[0]*256 + rang[1]
+    return tf
+
+
 class WiFiServer(Thread):
 
     def __init__(self):
@@ -40,8 +48,7 @@ class WiFiServer(Thread):
 
         self.M = 6  # Menu item
         self.N = 0  # Navigation flags
-        self.H = 0  # Highlighted flags
-        self.updt = True    # Defaults
+        self.updt = True
         self.act = False
 
         self.clientSock = None
@@ -63,8 +70,6 @@ class WiFiServer(Thread):
                         self.M = int(msg)
                     elif varNo == 2:
                         self.N = int(msg)
-                    elif varNo == 3:
-                        self.H = int(msg)
                     self.updt = True
                 else:
                     msg = msg + c
@@ -80,9 +85,6 @@ class WiFiServer(Thread):
                     parsStage = 2
                 elif c == "N":
                     varNo = 2
-                    parsStage = 2
-                elif c == "H":
-                    varNo = 3
                     parsStage = 2
                 else:
                     parsStage = 0
@@ -102,7 +104,7 @@ class WiFiServer(Thread):
 
     def read(self):
         self.updt = False
-        return (self.M, self.N, self.H)
+        return (self.M, self.N)
 
     def isActive(self):
         return self.act
@@ -133,7 +135,6 @@ class WiFiServer(Thread):
                     print("WiFi connection lost")
                     break
                 if (data is not None) and (data.decode() != ""):
-                    # print("WiFi recieved "+data.decode())
                     self.parse(data)
 
 
@@ -159,7 +160,6 @@ class ThreadSerial(Thread):
             while serl.in_waiting > 0:
                 resp = serl.readline()
                 va = resp.decode("utf-8", errors="ignore")[:-2]
-                # print(va)
                 if va[:3] == "<V=":
                     self.U = float(va[3:va.find(">")])
                 elif va[:3] == "<I=":
@@ -184,23 +184,29 @@ class I2C:
             res = self.bus.read_i2c_block_data(adr, reg, bts)
         except OSError:
             res = [-1]
-        # print("I2C: Adr-"+str(adr)+" Reg- "+str(reg)+" Read - "+str(res))
         return res
 
-    def write(self, adr, bts):
+    def write(self, adr, reg, bts):
+        try:
+            res = self.bus.write_i2c_block_data(adr, reg, bts)
+        except OSError:
+            res = [-1]
+        if res is None:
+            res = [1]
+        return res
+
+    def writeByte(self, adr, bts):
         try:
             res = self.bus.write_byte(adr, bts)
         except OSError:
             res = [-1]
         if res is None:
             res = [1]
-
-        # print("I2C: Adr-"+str(adr)+" Write - "+str(bts)+" Result - "+str(res))
-
         return res
 
 
 class VideoCamera(object):
+
     def __init__(self):
         self.vs = PiVideoStream(resolution=(320, 240), framerate=24).start()
         time.sleep(1)

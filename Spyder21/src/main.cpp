@@ -1,185 +1,53 @@
 #include <Arduino.h>
-
-// LED
-#include <microLED.h>
-microLED<16, 5, MLED_NO_CLOCK, LED_WS2818, ORDER_GRB, CLI_AVER, SAVE_MILLIS> strip;
-
-// I2C
-#include <Wire.h>
-int adr=0;
-int rcv[10];
-int bt=0;
-
-// Soft Serial
 #include <SoftwareSerial.h>
-SoftwareSerial softSerial(8,9);
+#include "actors.h"
+#include "servo.h"
+#include "sensors.h"
+#include "i2c.h"
 
-#define U_PIN A2
-#define I_PIN A3
-#define LED_PIN 6
-#define FAN_PIN 3
-
+// Timers
 unsigned long senstimer;
 unsigned long sendtimer;
 unsigned long temptimer;
 
-// Temperature
-#include <OneWire.h>
-#include <DallasTemperature.h>
-OneWire oneWire(10);
-DallasTemperature sensors(&oneWire);
-DeviceAddress temp1, temp0;
-float t0 = 0, t1 = 0, vol = 0, cur = 0, mah = 0;
-int sens[20][5];
+// I2C 
+int adr = 0;
+int cmd = 0;
 
-void gettemp() 
+// State
+int led = 0;
+int rgb = 0;
+int fan = 0;
+int mode;
+int state = 0;
+
+// Soft Serial
+SoftwareSerial softSerial(8,9);
+
+
+void setup() 
 {
-  sensors.requestTemperatures();
-  t0 = sensors.getTempC(temp0);
-  t1 = sensors.getTempC(temp1);
-}
-
-
-void getsens() 
-{
-  int i, j;
-  float in[2], sum[2];
-
-  in[0] = analogRead(U_PIN);
-  in[1] = analogRead(I_PIN);
-
-  for (i = 0; i < 2; i++)
-    sum[i] = 0;
-
-  for (i = 0; i < 20; i++)
-  {
-    if (i == 19)
-      for (j = 0; j < 2; j++)
-      {
-        sens[i][j] = in[j];
-        sum[j] = sum[j] + in[j];
-      }
-    else
-      for (j = 0; j < 2; j++)
-      {
-        sens[i][j] = sens[i + 1][j];
-        sum[j] = sum[j] + sens[i][j];
-      }
-  }
-
-  vol = sum[0] / 20.0 * 0.0151;
-  cur = (512.0 - (sum[1] / 20.0)) * 0.0264865;
-  mah = mah + vol * cur / 72000.0;
-}
-
-
-void recvData(int bts)
-{
-  bt=bts;
-  for(int i=0; i<bts; i++)
-    rcv[i]=Wire.read();
-  adr = rcv[0];
-}
-
-void sendData()
-{
-
-  Wire.write(123);
-
-}
-
-
-void setup() {
-  
-  pinMode(LED_PIN, OUTPUT);
-  analogWrite(LED_PIN, 0);
-
   senstimer = millis();
   sendtimer = millis();
 
-  // Soft Serial
   softSerial.begin(115200);
 
-  // Temperature
-  sensors.begin();
-  sensors.getAddress(temp0, 0);
-  sensors.getAddress(temp1, 1);
-  gettemp();
+  tempInit();
+  i2cInit();
+  servoInit();
+  actorsInit();
 
-  // I2C
-  Wire.begin(0x11);
-  Wire.onRequest(sendData);
-  Wire.onReceive(recvData);
-
-  // RGB
-  strip.setBrightness(60);
-  strip.clear();
-  strip.show();
-  delay(1);   
-
+  bitSet(mode, 4);
 }
 
-void loop() {
-  
+
+void loop() 
+{
   if (sendtimer + 1000 < millis())
   {
-    softSerial.println("<V=" + String(vol) + ">");
-    softSerial.println("<I=" + String(cur) + ">");
-    softSerial.println("<T1=" + String(t0) + ">");
-    softSerial.println("<T2=" + String(t1) + ">");
-    softSerial.println("<W=" + String(mah) + ">");
+    sendSensors(softSerial);
     sendtimer = millis();
   }
-
-  if (adr==10)
-  {
-    analogWrite(LED_PIN, 255);
-    adr=0;
-  }
-  if (adr==11)
-  {
-    analogWrite(LED_PIN, 0);
-    adr=0;
-  }
-
-  if (adr==12)
-  {
-    analogWrite(FAN_PIN, 255);
-    adr=0;
-  }
-  if (adr==13)
-  {
-    analogWrite(FAN_PIN, 0);
-    adr=0;
-  }
-
-  if (adr==14)
-  {
-    strip.fill(mGreen);
-    strip.show();   
-    adr=0;
-  }
-  if (adr==15)
-  {
-    strip.clear();
-    strip.show();
-    adr=0;
-  }
-
-   
-  if(bt>0)
-  {
-    softSerial.print("I2C >> ");
-    for(int i=0; i<bt; i++)
-    {
-      softSerial.print(rcv[i]);
-      softSerial.print(" ");
-      rcv[i]=0;
-    }
-    softSerial.println();
-    bt=0;
-  }
-
 
   if (senstimer + 50 < millis())
   {
@@ -193,5 +61,58 @@ void loop() {
     temptimer = millis();
   }
 
-}
+  if(adr == 1 and cmd != 0)
+  {
+    if (cmd == 13)  // workaround for transmition error causing cmd==0
+      cmd = 0;
 
+    if (cmd < 5)
+      mode = 1 << cmd;
+
+    if (cmd == 8)
+    {
+      if (led == 0)
+      {
+        ledON();
+        led = 1;
+      }
+      else
+      {
+        ledOFF();
+        led = 0;
+      }
+    }
+
+    if (cmd == 10)
+    {
+      if (fan == 0)
+      {
+        fanON();
+        fan = 1;
+      }
+      else
+      {
+        fanOFF();
+        fan = 0;
+      }
+    }
+
+    if (cmd == 9)
+    {
+      if (rgb == 0)
+      {
+        rgbON();
+        rgb = 1;
+      }
+      else
+      {
+        rgbOFF();
+        rgb = 0;
+      }
+    }
+  }
+  adr = 0;
+  cmd = 0;
+
+  state = (fan<<7) + (rgb<<6) + (led<<5) + mode;
+}

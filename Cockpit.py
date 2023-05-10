@@ -1,10 +1,10 @@
 '''
 Backlog
-- Pose Park
-- Command Park from Stand
-- Command Stand from Park/Radar/Move and Go
-- Command Radar from Stand and Scan
-- Command Move from Stand
+- Command to Park
+- Command to Go
+- Command to Move
+- Command to Radar
+- Command to Scenario
 - Free gait (walking)
 - Free move (without walking)
 - Radar scan and draw
@@ -30,15 +30,7 @@ class WiFiClient(Thread):
     def __init__(self):
         Thread.__init__(self, target=self.mainCycle)
         self.daemon = True
-
-        self.U = 0
-        self.A = 0
-        self.W = 0
-        self.T = 0
-        self.F = 0
         self.updt = True
-        self.act = False
-
         print("WiFi client started")
         self.start()
 
@@ -60,6 +52,8 @@ class WiFiClient(Thread):
                         self.T = float(msg)
                     elif varNo == 5:
                         self.F = int(float(msg))
+                    elif varNo == 6:
+                        self.S = int(float(msg))
                     self.updt = True
                 else:
                     msg = msg + c
@@ -85,6 +79,9 @@ class WiFiClient(Thread):
                 elif c == "F":
                     varNo = 5
                     parsStage = 2
+                elif c == "S":
+                    varNo = 6
+                    parsStage = 2
                 else:
                     parsStage = 0
             if parsStage == 0 and c == "<":
@@ -103,7 +100,7 @@ class WiFiClient(Thread):
 
     def read(self):
         self.updt = False
-        return (self.U, self.A, self.W, int(self.T), self.act, self.F)
+        return (self.U, self.A, self.W, int(self.T), self.act, self.F, self.S)
 
     def isActive(self):
         return self.act
@@ -113,6 +110,12 @@ class WiFiClient(Thread):
 
     def connect(self):
         self.act = False
+        self.U = 0
+        self.A = 0
+        self.W = 0
+        self.T = 0  # Temperature
+        self.F = 0  # ToF
+        self.S = 0  # State
         print("WiFi trying to connect...")
         cntd = False
         while not cntd:
@@ -141,7 +144,6 @@ class WiFiClient(Thread):
                     print("WiFi connection lost")
                     break
                 if (data is not None) and (data.decode() != ""):
-                    # print("WiFi recieved "+data.decode())
                     self.parse(data)
 
 
@@ -182,27 +184,35 @@ class MainWindow(QMainWindow):
         self.dsp = ST("DejaVuSans-Bold.ttf")
         self.mnit = 6
         self.navi = 0
-        self.hlgt = 0
-        self.img = self.dsp.drawCP((self.mnit, self.navi, self.hlgt), wf.read())
+        self.img = self.dsp.drawCP(self.mnit, self.navi, wf.read())
         self.keyfl = True
+        self.videoState = False
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.video)
+        self.timer.start(100)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.ping)
         self.timer.start(1000)
 
-    def VideoOn(self):
-        self.setGeometry(400, 10, 660, 750)
-        self.vid.setGeometry(10, 10, 640, 480)
-        self.display.setGeometry(210, 500, 240, 240)
-        self.th = VideoThread(self)
-        self.th.changePixmap.connect(self.setImage)
-        self.th.start()
+    def video(self):
+        if wf.isActive():
+            if not self.videoState and (wf.read()[6] >> 9) & 1 == 1:
+                self.setGeometry(400, 10, 660, 750)
+                self.vid.setGeometry(10, 10, 640, 480)
+                self.display.setGeometry(210, 500, 240, 240)
+                self.th = VideoThread(self)
+                self.th.changePixmap.connect(self.setImage)
+                self.th.start()
+                self.videoState = True
 
-    def VideoOff(self):
-        self.th.kill()
-        self.setGeometry(600, 200, 260, 260)
-        self.vid.setGeometry(1, 1, 1, 1)
-        self.display.setGeometry(10, 10, 240, 240)
+            if self.videoState and (wf.read()[6] >> 9) & 1 == 0:
+                self.th.kill()
+                self.setGeometry(600, 200, 260, 260)
+                self.vid.setGeometry(1, 1, 1, 1)
+                self.display.setGeometry(10, 10, 240, 240)
+                self.videoState = False
 
     def ping(self):
         if wf.isActive():
@@ -212,7 +222,7 @@ class MainWindow(QMainWindow):
             self.dsp.wifi = 0
 
     def paintEvent(self, event):
-        self.img = self.dsp.drawCP((self.mnit, self.navi, self.hlgt), wf.read())
+        self.img = self.dsp.drawCP(self.mnit, self.navi, wf.read())
         self.display.setPixmap(QPixmap.fromImage(ImageQt(self.img)))
 
     def keyPressEvent(self, event):
@@ -228,12 +238,9 @@ class MainWindow(QMainWindow):
                     self.mnit = 12
                 self.keyfl = False
             if event.key() == Qt.Key.Key_B:
-                self.hlgt = self.hlgt ^ (1 << self.mnit)
-                if self.mnit == 12:
-                    if self.hlgt & (1 << 12) == 0:
-                        self.VideoOff()
-                    else:
-                        self.VideoOn()
+                self.mnit = self.mnit + 100
+                self.keyfl = False
+
         if event.key() == Qt.Key.Key_E:
             self.navi = self.navi | (1 << 6)
         if event.key() == Qt.Key.Key_D:
@@ -255,6 +262,8 @@ class MainWindow(QMainWindow):
     def keyReleaseEvent(self, event):
         if not self.keyfl:
             if event.key() == Qt.Key.Key_N or event.key() == Qt.Key.Key_V or event.key() == Qt.Key.Key_B:
+                if self.mnit > 99:
+                    self.mnit = self.mnit - 100
                 self.keyfl = True
         if event.key() == Qt.Key.Key_E:
             self.navi = self.navi ^ (1 << 6)
@@ -278,7 +287,6 @@ class MainWindow(QMainWindow):
         if wf.isActive():
             msg = "<M="+str(self.mnit)+">"
             msg += "<N="+str(self.navi)+">"
-            msg += "<H="+str(self.hlgt)+">"
             wf.send(msg)
 
     @pyqtSlot(QImage)

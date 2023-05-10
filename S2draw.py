@@ -9,10 +9,10 @@ class ST:
     cth2 = 60
 
     mntpl = [[[0, 176, 40, 220], [20, 198], "Sc"],
-             [[0, 132, 40, 176], [20, 154], "Pk"],
-             [[0, 88, 40, 132], [20, 110], "Rd"],
-             [[0, 44, 40, 88], [20, 66], "Al"],
-             [[0, 0, 40, 44], [20, 22], "Mn"],
+             [[0, 132, 40, 176], [20, 154], "Rd"],
+             [[0, 88, 40, 132], [20, 110], "Mv"],
+             [[0, 44, 40, 88], [20, 66], "Go"],
+             [[0, 0, 40, 44], [20, 22], "Pk"],
              [[40, 0, 93, 44], [67, 22], "SET"],
              [[93, 0, 147, 44], [120, 22], "SYS"],
              [[147, 0, 200, 44], [173, 22], "TST"],
@@ -71,14 +71,20 @@ class ST:
 
     def drawMN(self, drw, actmn, hlg, tof):
         drw.font = ImageFont.truetype(self.fontstr, 20)
+        hlg = (hlg & 0b11111) + ((hlg << 3) & 0b1111100000000)
 
         for i in range(13):
             if hlg & (1 << i) == 0:
                 drw.rectangle(self.mntpl[i][0])
                 drw.text(self.mntpl[i][1], self.mntpl[i][2], anchor="mm")
             else:
-                drw.rectangle(self.mntpl[i][0], 0xffffff)
+                drw.rectangle(self.mntpl[i][0], 0x00ff00)
                 drw.text(self.mntpl[i][1], self.mntpl[i][2], 0, anchor="mm")
+
+        if actmn > 99:
+            actmn = actmn - 100
+            drw.rectangle(self.mntpl[actmn][0], 0xffffff)
+            drw.text(self.mntpl[actmn][1], self.mntpl[actmn][2], 0, anchor="mm")
 
         drw.rectangle(self.mntpl[actmn][0], outline=(255, 255, 0), width=5)
 
@@ -127,12 +133,12 @@ class ST:
         drw.regular_polygon((80, 190, 10), 3, 180, col)
         drw.polygon((70, 165, 90, 165, 80, 200), col)
 
-    def drawCP(self, tpl, sbtpl):
+    def drawCP(self, mnit, navi, state):
         image = Image.new("RGB", (240, 240), (0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        self.drawMN(draw, tpl[0], tpl[2], sbtpl[5])
-        self.drawSB(draw, sbtpl[:5])
-        self.drawSP(draw, tpl[1])
+        self.drawMN(draw, mnit, state[6], state[5])
+        self.drawSB(draw, state[:5])
+        self.drawSP(draw, navi)
 
         return image
