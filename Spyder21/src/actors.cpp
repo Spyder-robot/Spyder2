@@ -7,6 +7,7 @@ microLED<16, 5, MLED_NO_CLOCK, LED_WS2818, ORDER_GRB, CLI_AVER, SAVE_MILLIS> str
 #define LED_PIN 6
 #define FAN_PIN 3
 
+
 void actorsInit()
 {
   pinMode(LED_PIN, OUTPUT);
@@ -18,31 +19,37 @@ void actorsInit()
   delay(1);   
 }
 
+
 void ledON()
 {
   analogWrite(LED_PIN, 255);
 }
+
 
 void ledOFF()
 {
   analogWrite(LED_PIN, 0);
 }
 
+
 void fanON()
 {
   analogWrite(FAN_PIN, 255);
 }
+
 
 void fanOFF()
 {
     analogWrite(FAN_PIN, 0);
 }
 
+
 void rgbON()
 {
   strip.fill(mGreen);
   strip.show();   
 }
+
 
 void rgbOFF()
 {

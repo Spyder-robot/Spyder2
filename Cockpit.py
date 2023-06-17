@@ -1,12 +1,17 @@
 '''
 Backlog
-- Command to Park
-- Command to Go
-- Command to Move
-- Command to Radar
-- Command to Scenario
 - Free gait (walking)
 - Free move (without walking)
+- Control send/recieve
+- Binary moving control (0/max)
+- Temperature measurement delay
+- I2C stuck
+- Keyboard response delay/unstability
+- Add cycle leverage and fixing avg min max cycle time
+- Unactive (grey) unaccessible modes (e.g. Rad from Park)
+- Display sensors on Spyder w/o wifi connection
+- Processing model adaptation
+- Smooth moving control
 - Radar scan and draw
 - Data collecting W(V) - calculate % of remaining power
 - Flickering during video playback

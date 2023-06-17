@@ -2,6 +2,7 @@ from S2draw import ST
 from spyder2 import s2st, s2bl, WiFiServer, ThreadSerial, I2C, ThreadCamera, ToF
 import sys
 import time
+import os
 
 
 if __name__ == '__main__':
@@ -23,6 +24,9 @@ if __name__ == '__main__':
         while True:
             if wf.isUpdated():
                 wfmsg = wf.read()
+
+                i2c.write(0x11, 2, (wfmsg[1],))
+
                 if menuPressed:
                     if wfmsg[0] < 100:
                         menuPressed = False
@@ -38,6 +42,9 @@ if __name__ == '__main__':
                             stateTOF = stateTOF ^ 1
                         if wfm == 12:
                             stateVID = stateVID ^ 1
+                        if wfm == 6:
+                            os.system("sudo avrdude -p atmega328p -C /etc/avrdude.conf -c "
+                                      "Arduino_1 -v -U flash:w:firmware.hex:i")
 
             if time.time() - timer > .2:
                 stateARD = i2c.read(0x11, 0, 1)[0]

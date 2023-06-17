@@ -19,12 +19,14 @@ void tempInit()
   gettemp();
 }
 
+
 void gettemp() 
 {
   sensors.requestTemperatures();
   t0 = sensors.getTempC(temp0);
   t1 = sensors.getTempC(temp1);
 }
+
 
 void getsens() 
 {
@@ -34,19 +36,19 @@ void getsens()
   in[0] = analogRead(U_PIN);
   in[1] = analogRead(I_PIN);
 
-  for (i = 0; i < 2; i++)
+  for(i = 0; i < 2; i++)
     sum[i] = 0;
 
-  for (i = 0; i < 20; i++)
+  for(i = 0; i < 20; i++)
   {
-    if (i == 19)
-      for (j = 0; j < 2; j++)
+    if(i == 19)
+      for(j = 0; j < 2; j++)
       {
         sens[i][j] = in[j];
         sum[j] = sum[j] + in[j];
       }
     else
-      for (j = 0; j < 2; j++)
+      for(j = 0; j < 2; j++)
       {
         sens[i][j] = sens[i + 1][j];
         sum[j] = sum[j] + sens[i][j];
@@ -57,6 +59,7 @@ void getsens()
   cur = (512.0 - (sum[1] / 20.0)) * 0.0264865;
   mah = mah + vol * cur / 72000.0;
 }
+
 
 void sendSensors(SoftwareSerial ser)
 {
