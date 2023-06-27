@@ -1,20 +1,20 @@
 '''
 Backlog
+- Dualshock 3
+- Control send/recieve (main - joistick)
 - Free gait (walking)
 - Free move (without walking)
-- Control send/recieve
-- Binary moving control (0/max)
+- switch-case for poses
 - Temperature measurement delay
 - I2C stuck
-- Keyboard response delay/unstability
 - Add cycle leverage and fixing avg min max cycle time
 - Unactive (grey) unaccessible modes (e.g. Rad from Park)
 - Display sensors on Spyder w/o wifi connection
 - Processing model adaptation
-- Smooth moving control
 - Radar scan and draw
 - Data collecting W(V) - calculate % of remaining power
 - Flickering during video playback
+- Display for joistick (ESP32)
 '''
 
 from PyQt6.QtGui import QPixmap, QImage

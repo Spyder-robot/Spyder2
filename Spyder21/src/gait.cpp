@@ -13,8 +13,86 @@ float xyzStart[18];
 float xyzFinish[18];
 float xyzCur[18];
 
+float xyzGlobal[18];
+
+float stepL = 50;
+float stepH = 20;
+
 int stageDuration = 500;
 long startTime;
+
+
+void LtoG(float *loc, float *glob)
+{
+    int i;
+    float ang, x, y;
+    float A = 97.5;
+
+    for(i = 0; i < 6; i++)
+    {
+        ang = PI/3 - PI/3*i;
+        x = loc[i * 3] * cos(ang) - loc[i * 3 +1] * sin(ang);
+        y = loc[i * 3] * sin(ang) + loc[i * 3 +1] * cos(ang);
+        glob[i * 3] = x + cos(-ang) * A;
+        glob[i * 3 + 1] = y - sin(-ang) * A;
+        glob[i * 3 + 2] = loc[i * 3 + 2];
+    }
+}
+
+
+void GtoL(float *glob, float *loc)
+{
+    int i;
+    float ang, x, y;
+    float A = 97.5;
+
+    for(i = 0; i < 6; i++)
+    {
+        ang = PI/3 - PI/3*i;
+        x = glob[i * 3] - cos(ang) * A;
+        y = glob[i * 3 +1] - sin(ang) * A;
+        loc[i * 3] = x * cos(-ang) - y * sin(-ang);
+        loc[i * 3 + 1] = x * sin(-ang) + y * cos(-ang);
+        loc[i * 3 + 2] = glob[i * 3 + 2];
+    }
+}
+
+
+void printTransform(float *arr)
+{
+    int i, j;
+    float ggg[18];
+
+    softSerial.println("Local");
+    for(i = 0; i < 6; i++)
+    {
+        for(j = 0; j < 3; j++)
+            softSerial.print(String(arr[i * 3 + j])+"\t");
+        softSerial.println();
+    }
+
+    LtoG(arr, ggg);
+
+    softSerial.println("Transformed Local to Global");
+    for(i = 0; i < 6; i++)
+    {
+        for(j = 0; j < 3; j++)
+            softSerial.print(String(ggg[i * 3 + j])+"\t");
+        softSerial.println();
+    }
+
+    GtoL(ggg, arr);
+
+    softSerial.println("Transformed Global to Local");
+    for(i = 0; i < 6; i++)
+    {
+        for(j = 0; j < 3; j++)
+            softSerial.print(String(arr[i * 3 + j])+"\t");
+        softSerial.println();
+    }
+
+
+}
 
 
 void IIK(float *xyz, float *ang)
@@ -72,6 +150,7 @@ void currentToStart(float *arr)
     float a[3], x[3];
 
     curPosition(ang);
+
     for(i = 0; i < 6; i++)
     {
         for(j = 0; j < 3; j++)
@@ -81,6 +160,7 @@ void currentToStart(float *arr)
 
         for(j = 0; j < 3; j++)
             arr[i * 3 + j] = x[j];
+
     }
 }
 
@@ -124,11 +204,13 @@ void parkToGo()
 
     if(stage == 5)
     {
+        printTransform(xyzFinish);
         readyToChangeMode = true;
         mode = nextmode;
         gaitNo = 5;
-        stage = 0;
         readyToNextStage = true;
+        stage = 0;
+        return;
     }
 
     if(stage == 4)
@@ -306,7 +388,7 @@ void goToPark()
 
     if(stage == 0)
     {
-        softSerial.println("Park To Go");
+        softSerial.println("Go To Park");
         currentToStart(xyzStart);
         for(i = 0; i < 6; i+=2)
         {
@@ -336,7 +418,7 @@ void goToRad()
 
     if(stage == 0)
     {
-        softSerial.println("Park To Go");
+        softSerial.println("Go To Radar");
         currentToStart(xyzStart);
         for(i = 0; i < 6; i++)
         {
@@ -366,7 +448,7 @@ void radToGo()
 
     if(stage == 0)
     {
-        softSerial.println("Park To Go");
+        softSerial.println("Radar To Go");
         currentToStart(xyzStart);
         for(i = 0; i < 6; i++)
         {
@@ -385,7 +467,157 @@ void radToGo()
 
 void mainGait()
 {
+    int i;
 
+    readyToChangeMode = true; // change mode at any moment
+
+    switch (stage)
+    {
+        case 0:
+        {
+            softSerial.println("Main Gait");
+
+            for(i = 0; i < 6; i++)
+            {
+                xyzStart[i * 3] = 106;
+                xyzStart[i * 3 + 1] = 0;
+                xyzStart[i * 3 + 2] = 103;
+            }            
+
+            for(i = 0; i < 18; i++)
+                xyzCur[i] = xyzStart[i];
+            
+            LtoG(xyzStart, xyzGlobal);
+
+            for(i = 0; i < 6; i+=2)
+                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] - stepH;
+
+            GtoL(xyzGlobal, xyzFinish);
+
+            readyToNextStage = false;
+            stage = 1;
+            startTime = millis();
+
+            break;
+        }
+
+        case 1:
+        {
+            for(i = 0; i < 18; i++)
+            {
+                xyzStart[i] = xyzFinish[i];
+                xyzCur[i] = xyzStart[i];
+            }
+
+            LtoG(xyzStart, xyzGlobal);
+            
+            for(i = 0; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
+                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] + stepH;
+            }            
+            for(i = 1; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
+            }            
+
+            GtoL(xyzGlobal, xyzFinish);
+
+            readyToNextStage = false;
+            stage = 2;
+            startTime = millis();
+
+            break;
+        }
+
+        case 2:
+        {
+            for(i = 0; i < 18; i++)
+            {
+                xyzStart[i] = xyzFinish[i];
+                xyzCur[i] = xyzStart[i];
+            }
+
+            LtoG(xyzStart, xyzGlobal);
+            
+            for(i = 0; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
+            }            
+            for(i = 1; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
+                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] - stepH;
+            }            
+
+            GtoL(xyzGlobal, xyzFinish);
+
+            readyToNextStage = false;
+            stage = 3;
+            startTime = millis();
+
+            break;
+        }
+
+        case 3:
+        {
+            for(i = 0; i < 18; i++)
+            {
+                xyzStart[i] = xyzFinish[i];
+                xyzCur[i] = xyzStart[i];
+            }
+
+            LtoG(xyzStart, xyzGlobal);
+            
+            for(i = 0; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
+            }            
+            for(i = 1; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
+                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] + stepH;
+            }            
+
+            GtoL(xyzGlobal, xyzFinish);
+
+            readyToNextStage = false;
+            stage = 4;
+            startTime = millis();
+
+            break;
+        }
+
+        case 4:
+        {
+            for(i = 0; i < 18; i++)
+            {
+                xyzStart[i] = xyzFinish[i];
+                xyzCur[i] = xyzStart[i];
+            }
+
+            LtoG(xyzStart, xyzGlobal);
+            
+            for(i = 0; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
+                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] - stepH;
+            }            
+            for(i = 1; i < 6; i+=2)
+            {
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
+            }            
+
+            GtoL(xyzGlobal, xyzFinish);
+
+            readyToNextStage = false;
+            stage = 1;
+            startTime = millis();
+
+            break;
+        }
+
+    }
 }
 
 
@@ -430,6 +662,3 @@ void gait()
     else
         moveStage();
 }
-
-
- 

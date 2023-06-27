@@ -44,7 +44,7 @@ if __name__ == '__main__':
                             stateVID = stateVID ^ 1
                         if wfm == 6:
                             os.system("sudo avrdude -p atmega328p -C /etc/avrdude.conf -c "
-                                      "Arduino_1 -v -U flash:w:firmware.hex:i")
+                                      "Arduino_1 -v -V -U flash:w:firmware.hex:i")
 
             if time.time() - timer > .2:
                 stateARD = i2c.read(0x11, 0, 1)[0]
