@@ -15,8 +15,14 @@ float xyzCur[18];
 
 float xyzGlobal[18];
 
-float stepL = 50;
+float X = 106;
+float Z = 103;
+
+float R;
+float stepL = 30;
 float stepH = 20;
+float stepW = 0;
+float stepT = 0;
 
 int stageDuration = 500;
 long startTime;
@@ -468,6 +474,7 @@ void radToGo()
 void mainGait()
 {
     int i;
+    float ang, angT, stepTX, stepTY;
 
     readyToChangeMode = true; // change mode at any moment
 
@@ -479,20 +486,17 @@ void mainGait()
 
             for(i = 0; i < 6; i++)
             {
-                xyzStart[i * 3] = 106;
+                xyzStart[i * 3] = X;
                 xyzStart[i * 3 + 1] = 0;
-                xyzStart[i * 3 + 2] = 103;
+                xyzStart[i * 3 + 2] = Z;
             }            
-
+            R = 97.5 + X;
+            
             for(i = 0; i < 18; i++)
                 xyzCur[i] = xyzStart[i];
             
-            LtoG(xyzStart, xyzGlobal);
-
             for(i = 0; i < 6; i+=2)
-                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] - stepH;
-
-            GtoL(xyzGlobal, xyzFinish);
+                xyzFinish[i * 3 + 2] = Z - stepH;
 
             readyToNextStage = false;
             stage = 1;
@@ -510,15 +514,21 @@ void mainGait()
             }
 
             LtoG(xyzStart, xyzGlobal);
+
+            angT = stepT / R;
             
-            for(i = 0; i < 6; i+=2)
+            for(i = 0; i < 6; i++)
             {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
-                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] + stepH;
-            }            
-            for(i = 1; i < 6; i+=2)
-            {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
+                ang = asin(xyzGlobal[i * 3 + 1] / R);
+                if (xyzGlobal[i * 3] < 0)
+                    ang = PI - ang;
+                ang = ang + angT;
+                stepTX = R * cos(ang) - xyzGlobal[i * 3];
+                stepTY = R * sin(ang) - xyzGlobal[i * 3 + 1];
+
+                xyzGlobal[i * 3] = xyzGlobal[i * 3] + (1-(i%2)*2) * (stepW + stepTX);
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + (1-(i%2)*2) * (stepL + stepTY);
+                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] + (1-(i%2)) * stepH;
             }            
 
             GtoL(xyzGlobal, xyzFinish);
@@ -538,19 +548,12 @@ void mainGait()
                 xyzCur[i] = xyzStart[i];
             }
 
-            LtoG(xyzStart, xyzGlobal);
-            
-            for(i = 0; i < 6; i+=2)
+            for(i = 0; i < 6; i++)
             {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
-            }            
-            for(i = 1; i < 6; i+=2)
-            {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
-                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] - stepH;
-            }            
-
-            GtoL(xyzGlobal, xyzFinish);
+                xyzFinish[i * 3] = X;
+                xyzFinish[i * 3 + 1] = 0;
+                xyzFinish[i * 3 + 2] = Z - (1-((i+1)%2)) * stepH;
+            }         
 
             readyToNextStage = false;
             stage = 3;
@@ -569,14 +572,20 @@ void mainGait()
 
             LtoG(xyzStart, xyzGlobal);
             
-            for(i = 0; i < 6; i+=2)
+            angT = stepT / R;
+   
+            for(i = 0; i < 6; i++)
             {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
-            }            
-            for(i = 1; i < 6; i+=2)
-            {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
-                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] + stepH;
+                ang = asin(xyzGlobal[i * 3 + 1] / R);
+                if (xyzGlobal[i * 3] < 0)
+                    ang = PI - ang;
+                ang = ang + angT;
+                stepTX = R * cos(ang) - xyzGlobal[i * 3];
+                stepTY = R * sin(ang) - xyzGlobal[i * 3 + 1];
+
+                xyzGlobal[i * 3] = xyzGlobal[i * 3] + (1-((i+1)%2)*2) * (stepW + stepTX);
+                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + (1-((i+1)%2)*2) * (stepL + stepTY);
+                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] + (1-((i+1)%2)) * stepH;
             }            
 
             GtoL(xyzGlobal, xyzFinish);
@@ -596,19 +605,12 @@ void mainGait()
                 xyzCur[i] = xyzStart[i];
             }
 
-            LtoG(xyzStart, xyzGlobal);
-            
-            for(i = 0; i < 6; i+=2)
+            for(i = 0; i < 6; i++)
             {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] + stepL;
-                xyzGlobal[i * 3 + 2] = xyzGlobal[i * 3 + 2] - stepH;
-            }            
-            for(i = 1; i < 6; i+=2)
-            {
-                xyzGlobal[i * 3 + 1] = xyzGlobal[i * 3 + 1] - stepL;
-            }            
-
-            GtoL(xyzGlobal, xyzFinish);
+                xyzFinish[i * 3] = X;
+                xyzFinish[i * 3 + 1] = 0;
+                xyzFinish[i * 3 + 2] = Z - (1-(i%2)) * stepH;
+            }         
 
             readyToNextStage = false;
             stage = 1;

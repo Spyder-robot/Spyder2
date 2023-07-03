@@ -1,9 +1,13 @@
 '''
 Backlog
+- Step size normalizing
+- Speed calculated based on path length
 - Dualshock 3
 - Control send/recieve (main - joistick)
+- Menu control (button press - highlight menu, joystick - select, button release - confirm)
 - Free gait (walking)
 - Free move (without walking)
+- Avoid pause between stages
 - switch-case for poses
 - Temperature measurement delay
 - I2C stuck
@@ -14,6 +18,7 @@ Backlog
 - Radar scan and draw
 - Data collecting W(V) - calculate % of remaining power
 - Flickering during video playback
+- Smooth moving through stage (not a max speed by cycles)
 - Display for joistick (ESP32)
 '''
 
